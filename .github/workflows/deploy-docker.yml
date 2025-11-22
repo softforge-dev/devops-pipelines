@@ -28,10 +28,11 @@ jobs:
         echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
 
-    - name: Copiar projeto para VPS
+    - name: Copiar docker/ para VPS
       run: |
         rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-          ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ inputs.deploy_path }}/
+          ./docker/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ inputs.deploy_path }}/docker/
+
 
     - name: Rodar docker compose
       run: |
