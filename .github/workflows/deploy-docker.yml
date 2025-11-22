@@ -14,7 +14,6 @@ on:
       SSH_HOST:
         required: true
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -32,10 +31,10 @@ jobs:
     - name: Copiar projeto para VPS
       run: |
         rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-          ./ ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:${{ inputs.deploy_path }}/
+          ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ inputs.deploy_path }}/
 
     - name: Rodar docker compose
       run: |
         ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
           "cd ${{ inputs.deploy_path }}/docker && docker compose down && docker compose up -d --build"
