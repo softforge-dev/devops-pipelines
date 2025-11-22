@@ -22,20 +22,39 @@ jobs:
     - name: Checkout projeto alvo
       uses: actions/checkout@v4
 
+    # -------------------------
+    # PREPARAR CHAVE SSH
+    # -------------------------
     - name: Configurar chave SSH
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
 
-    - name: Copiar docker/ para VPS
+    # -------------------------
+    # TESTAR CONEXÃO SSH (DEBUG)
+    # -------------------------
+    - name: Testar conexão SSH (DEBUG)
       run: |
-        rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+        ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'CONEXÃO OK'"
+
+    # -------------------------
+    # COPIAR APENAS PASTA docker/ COM DEBUG
+    # -------------------------
+    - name: Copiar docker/ para VPS (DEBUG)
+      run: |
+        rsync -avvz \
+          -e "ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
           ./docker/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ inputs.deploy_path }}/docker/
 
-
-    - name: Rodar docker compose
+    # -------------------------
+    # RODAR DOCKER COMPOSE NO SERVIDOR
+    # -------------------------
+    - name: Rodar Docker Compose no servidor (DEBUG)
       run: |
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+        ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
           ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "cd ${{ inputs.deploy_path }}/docker && docker compose down && docker compose up -d --build"
+          "cd ${{ inputs.deploy_path }}/docker && \
+           docker compose down && \
+           docker compose up -d --build"
