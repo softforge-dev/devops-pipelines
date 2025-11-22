@@ -1,42 +1,35 @@
-name: Deploy Docker Compose (Reusable)
-
 on:
   workflow_call:
-    inputs:
-      deploy_path:
-        required: true
-        type: string
-      ssh_user:
-        required: true
-        type: string
-      ssh_host:
-        required: true
-        type: string
-    secrets:
-      SSH_KEY:
-        required: true
+
+name: 🚀 Deploy via Docker Compose
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout projeto alvo
-      uses: actions/checkout@v4
+      - name: 📦 Obtendo código
+        uses: actions/checkout@v3
 
-    - name: Configurar chave SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
+      - name: 🐳 Enviando arquivos para a VPS e subindo containers
+        uses: cross-the-world/ssh-pipeline@master
+        env:
+          WELCOME: "ssh pipeline"
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          user: ${{ secrets.SERVER_USER }}
+          pass: ${{ secrets.SERVER_PASS }}
+          port: 22
+          connect_timeout: 10s
+          script: |
+            cd /srv/app || exit 1
 
-    - name: Copiar projeto para VPS
-      run: |
-        rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-          ./ ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:${{ inputs.deploy_path }}/
+            echo "🔄 Atualizando arquivos do projeto..."
+            git pull origin main
 
-    - name: Rodar docker compose
-      run: |
-        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
-          "cd ${{ inputs.deploy_path }}/docker && docker compose down && docker compose up -d --build"
+            echo "🐳 Subindo containers..."
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            echo "🧹 Limpando imagens antigas..."
+            docker image prune -af
