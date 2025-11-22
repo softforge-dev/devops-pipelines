@@ -6,12 +6,14 @@ on:
       deploy_path:
         required: true
         type: string
+      ssh_user:
+        required: true
+        type: string
+      ssh_host:
+        required: true
+        type: string
     secrets:
       SSH_KEY:
-        required: true
-      SSH_USER:
-        required: true
-      SSH_HOST:
         required: true
 
 jobs:
@@ -22,39 +24,19 @@ jobs:
     - name: Checkout projeto alvo
       uses: actions/checkout@v4
 
-    # -------------------------
-    # PREPARAR CHAVE SSH
-    # -------------------------
     - name: Configurar chave SSH
       run: |
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
         chmod 600 ~/.ssh/deploy_key
 
-    # -------------------------
-    # TESTAR CONEXÃO SSH (DEBUG)
-    # -------------------------
-    - name: Testar conexão SSH (DEBUG)
+    - name: Copiar projeto para VPS
       run: |
-        ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "echo 'CONEXÃO OK'"
+        rsync -avz -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+          ./ ${{ inputs.ssh_user }}@${{ inputs.ssh_host }}:${{ inputs.deploy_path }}/
 
-    # -------------------------
-    # COPIAR APENAS PASTA docker/ COM DEBUG
-    # -------------------------
-    - name: Copiar docker/ para VPS (DEBUG)
+    - name: Rodar docker compose
       run: |
-        rsync -avvz \
-          -e "ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-          ./docker/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ inputs.deploy_path }}/docker/
-
-    # -------------------------
-    # RODAR DOCKER COMPOSE NO SERVIDOR
-    # -------------------------
-    - name: Rodar Docker Compose no servidor (DEBUG)
-      run: |
-        ssh -vvv -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-          ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-          "cd ${{ inputs.deploy_path }}/docker && \
-           docker compose down && \
-           docker compose up -d --build"
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+          ${{ inputs.ssh_user }}@${{ inputs.ssh_host }} \
+          "cd ${{ inputs.deploy_path }}/docker && docker compose down && docker compose up -d --build"
